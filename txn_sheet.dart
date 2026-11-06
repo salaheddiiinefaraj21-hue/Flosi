@@ -4,7 +4,7 @@ import 'state.dart';
 import 'util.dart';
 import 'widgets.dart';
 
-Future<void> showTxnSheet(BuildContext context, {Txn? edit, String? type}) {
+Future<void> showTxnSheet(BuildContext context, {Txn? edit, String? type, bool markPaid = false}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -12,14 +12,15 @@ Future<void> showTxnSheet(BuildContext context, {Txn? edit, String? type}) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (ctx) => TxnForm(edit: edit, initialType: type),
+    builder: (ctx) => TxnForm(edit: edit, initialType: type, markPaid: markPaid),
   );
 }
 
 class TxnForm extends StatefulWidget {
   final Txn? edit;
   final String? initialType;
-  const TxnForm({super.key, this.edit, this.initialType});
+  final bool markPaid;
+  const TxnForm({super.key, this.edit, this.initialType, this.markPaid = false});
   @override
   State<TxnForm> createState() => _TxnFormState();
 }
@@ -27,6 +28,7 @@ class TxnForm extends StatefulWidget {
 class _TxnFormState extends State<TxnForm> {
   late String type;
   late DateTime date;
+  bool paid = true;
   final title = TextEditingController();
   final amount = TextEditingController();
   final note = TextEditingController();
@@ -39,11 +41,14 @@ class _TxnFormState extends State<TxnForm> {
     final e = widget.edit;
     type = e?.type ?? widget.initialType ?? 'in';
     date = e != null ? dateOf(e.date) : DateTime.now();
+    paid = widget.markPaid ? true : (e?.paid ?? true);
     if (e != null) {
       title.text = e.title;
-      amount.text = e.amount == e.amount.roundToDouble()
-          ? e.amount.toStringAsFixed(0)
-          : e.amount.toString();
+      amount.text = e.amount <= 0
+          ? ''
+          : (e.amount == e.amount.roundToDouble()
+              ? e.amount.toStringAsFixed(0)
+              : e.amount.toString());
       note.text = e.note;
     }
   }
@@ -68,12 +73,13 @@ class _TxnFormState extends State<TxnForm> {
 
   Future<void> save() async {
     final t = title.text.trim();
-    final a = parseAmount(amount.text);
+    final needsAmount = type == 'out' || paid;
+    final a = needsAmount ? parseAmount(amount.text) : 0.0;
     setState(() {
       titleErr = t.isEmpty
           ? (type == 'in' ? 'كتب فين خدمتي' : 'اختار نوع المصروف')
           : null;
-      amountErr = a <= 0 ? 'كتب مبلغ صحيح' : null;
+      amountErr = needsAmount && a <= 0 ? 'كتب مبلغ صحيح' : null;
     });
     if (titleErr != null || amountErr != null) return;
     final nav = Navigator.of(context);
@@ -86,6 +92,7 @@ class _TxnFormState extends State<TxnForm> {
         amount: a,
         date: ymd(date),
         note: note.text.trim(),
+        paid: type == 'out' ? true : paid,
       ));
       nav.pop();
       msg.showSnackBar(const SnackBar(content: Text('تسجل ✓')));
@@ -135,6 +142,19 @@ class _TxnFormState extends State<TxnForm> {
             ),
             gap,
             if (isIn) ...[
+              SegmentedButton<bool>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: true, label: Text('تخلصت')),
+                  ButtonSegment(value: false, label: Text('مازال ما تخلصتش')),
+                ],
+                selected: {paid},
+                onSelectionChanged: (s) => setState(() {
+                  paid = s.first;
+                  amountErr = null;
+                }),
+              ),
+              gap,
               if (appState.services.isNotEmpty)
                 Wrap(
                   spacing: 8,
@@ -185,12 +205,17 @@ class _TxnFormState extends State<TxnForm> {
                   child: Text(titleErr!, style: const TextStyle(color: C.red, fontSize: 12)),
                 ),
             ],
-            gap,
-            TextField(
-              controller: amount,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(labelText: 'المبلغ (درهم)', errorText: amountErr),
-            ),
+            if (!isIn || paid) ...[
+              gap,
+              TextField(
+                controller: amount,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: isIn ? 'شحال تخلصتي (درهم)' : 'المبلغ (درهم)',
+                  errorText: amountErr,
+                ),
+              ),
+            ],
             gap,
             OutlinedButton.icon(
               onPressed: pickDate,
@@ -206,7 +231,7 @@ class _TxnFormState extends State<TxnForm> {
             gap,
             FilledButton(
               onPressed: save,
-              child: Text(isIn ? 'سجل الدخل' : 'سجل المصروف'),
+              child: Text(!isIn ? 'سجل المصروف' : (paid ? 'سجل الدخل' : 'سجل (ما تخلصش)')),
             ),
             if (widget.edit != null)
               TextButton(

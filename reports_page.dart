@@ -63,7 +63,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Map<String, double> _group(List<Txn> list, String type) {
     final m = <String, double>{};
     for (final t in list) {
-      if (t.type == type) m[t.title] = (m[t.title] ?? 0) + t.amount;
+      if (t.type == type && t.paid) m[t.title] = (m[t.title] ?? 0) + t.amount;
     }
     return m;
   }

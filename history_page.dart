@@ -19,7 +19,11 @@ class _HistoryPageState extends State<HistoryPage> {
   List<Txn> get filtered {
     final q = query.trim().toLowerCase();
     return appState.txns.where((t) {
-      if (type != 'all' && t.type != type) return false;
+      if (type == 'pending') {
+        if (t.paid) return false;
+      } else if (type != 'all' && t.type != type) {
+        return false;
+      }
       if (range != null) {
         if (t.date.compareTo(ymd(range!.start)) < 0) return false;
         if (t.date.compareTo(ymd(range!.end)) > 0) return false;
@@ -71,6 +75,10 @@ class _HistoryPageState extends State<HistoryPage> {
               label: const Text('مصاريف'),
               selected: type == 'out',
               onSelected: (_) => setState(() => type = 'out')),
+          ChoiceChip(
+              label: const Text('ما تخلصش'),
+              selected: type == 'pending',
+              onSelected: (_) => setState(() => type = 'pending')),
         ],
       ),
       const SizedBox(height: 8),

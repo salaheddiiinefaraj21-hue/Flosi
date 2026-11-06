@@ -156,7 +156,8 @@ class TxnTile extends StatelessWidget {
   const TxnTile({super.key, required this.t, required this.onTap, this.showDate = false});
   @override
   Widget build(BuildContext context) {
-    final color = t.isIn ? C.green : C.red;
+    final unpaid = !t.paid;
+    final color = unpaid ? C.gold : (t.isIn ? C.green : C.red);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -167,7 +168,7 @@ class TxnTile extends StatelessWidget {
             CircleAvatar(
               radius: 18,
               backgroundColor: color.withAlpha(40),
-              child: Icon(t.isIn ? Icons.south_west : Icons.north_east, size: 18, color: color),
+              child: Icon(unpaid ? Icons.hourglass_bottom : (t.isIn ? Icons.south_west : Icons.north_east), size: 18, color: color),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -183,7 +184,7 @@ class TxnTile extends StatelessWidget {
               ),
             ),
             Text(
-              '${t.isIn ? '+' : '−'}${money(t.amount)}',
+              unpaid ? 'ما تخلصش' : '${t.isIn ? '+' : '−'}${money(t.amount)}',
               style: TextStyle(color: color, fontWeight: FontWeight.w700),
             ),
           ],

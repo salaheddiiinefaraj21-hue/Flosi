@@ -61,6 +61,30 @@ class HomePage extends StatelessWidget {
             ],
           ),
         ),
+        if (appState.pending.isNotEmpty) ...[
+          SectionTitle('مازال ما تخلصتش (${appState.pending.length})'),
+          Panel(
+            child: Column(
+              children: appState.pending
+                  .map((t) => Row(
+                        children: [
+                          Expanded(
+                            child: TxnTile(
+                              t: t,
+                              showDate: true,
+                              onTap: () => showTxnSheet(context, edit: t),
+                            ),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () => showTxnSheet(context, edit: t, markPaid: true),
+                            child: const Text('تخلصت'),
+                          ),
+                        ],
+                      ))
+                  .toList(),
+            ),
+          ),
+        ],
         const SectionTitle('اليوم'),
         Panel(
           child: today.isEmpty
